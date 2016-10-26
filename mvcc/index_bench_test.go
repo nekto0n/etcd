@@ -19,23 +19,42 @@ import (
 	"testing"
 )
 
-func BenchmarkIndexRestore(b *testing.B) {
+// benchmarkIndexRestore simulates restoring up to n revisions per key
+func benchmarkIndexRestore(n int, b *testing.B) {
 	var (
 		keys            = make([][]byte, b.N)
 		createds        = make([]revision, b.N)
 		modifieds       = make([]revision, b.N)
 		ver       int64 = 1
 	)
+
+	k := b.N / n
+	// In case it is a calibrating run with small b.N
+	if k == 0 {
+		k = b.N
+	}
 	for i := 0; i < b.N; i++ {
-		keys[i] = []byte(fmt.Sprintf("foo%d", i))
+		keys[i] = []byte(fmt.Sprintf("foo%d", i % k))
 		createds[i] = revision{int64(i), 0}
 		modifieds[i] = revision{int64(i), 1}
 	}
 
 	kvindex := newTreeIndex()
-
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		kvindex.Restore(keys[i], createds[i], modifieds[i], ver)
 	}
+}
+
+func BenchmarkIndexRestore1(b *testing.B) {
+	benchmarkIndexRestore(1, b)
+}
+
+func BenchmarkIndexRestore10(b *testing.B) {
+	benchmarkIndexRestore(10, b)
+}
+
+func BenchmarkIndexRestore100(b *testing.B) {
+	benchmarkIndexRestore(100, b)
 }
